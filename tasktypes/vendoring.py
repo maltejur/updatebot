@@ -28,6 +28,7 @@ class VendorTaskRunner(BaseTaskRunner):
 
     def process_task(self, library, task):
         assert task.type == 'vendoring'
+        self.logger.set_context(library.name)
 
         # Collect all the existing jobs, and figure out which have open bugs
         all_jobs = self.dbProvider.get_all_jobs_for_library(library, JOBTYPE.VENDORING)
@@ -85,6 +86,8 @@ class VendorTaskRunner(BaseTaskRunner):
         self.cmdProvider.run(["hg", "status"])
         reset_repository(self.cmdProvider)
 
+        self.logger.clear_context()
+
     # ====================================================================
 
     @logEntryExit
@@ -103,6 +106,7 @@ class VendorTaskRunner(BaseTaskRunner):
 
         # Create the job ----------------------
         created_job = self.dbProvider.create_job(JOBTYPE.VENDORING, library, new_version, JOBSTATUS.CREATED, JOBOUTCOME.PENDING)
+        self.logger.set_context(library.name, created_job.id)
 
         # File the bug ------------------------
         all_upstream_commits, unseen_upstream_commits = self.scmProvider.check_for_update(library, task, new_version, most_recent_job)
@@ -231,6 +235,7 @@ class VendorTaskRunner(BaseTaskRunner):
           Post the comment, set assignee, needinfo, set reviewr, and set state to JOB_PROCESSING_DONE
         """
         my_ff_version = self.config['General']['ff-version']
+        self.logger.set_context(library.name, existing_job.id)
 
         if existing_job.status == JOBSTATUS.CREATED:
             # The job has been created; but for some reason was never set to a final status
